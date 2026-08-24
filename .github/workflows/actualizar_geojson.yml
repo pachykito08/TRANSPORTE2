@@ -1,9 +1,7 @@
 name: Actualizar GeoJSON Transporte La Plata
 
 on:
-  # Permite ejecutar el script manualmente desde la pestaña 'Actions'
   workflow_dispatch:
-  # Se ejecuta automáticamente todos los días a las 00:00 UTC
   schedule:
     - cron: '0 0 * * *'
 
@@ -12,14 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write # OBLIGATORIO: Permite al bot hacer push del GeoJSON actualizado
+      contents: write
 
     steps:
+      # Actualizado a v5 para soporte de entornos modernos
       - name: Clonar el repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
+      # Actualizado a v6 para soporte de entornos modernos
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
 
