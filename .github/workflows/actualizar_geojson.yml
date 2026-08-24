@@ -13,15 +13,17 @@ jobs:
       contents: write
 
     steps:
-      # Actualizado a v5 para soporte de entornos modernos
       - name: Clonar el repositorio
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
-      # Actualizado a v6 para soporte de entornos modernos
       - name: Configurar Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+
+      # PASO NUEVO: Instalar requests
+      - name: Instalar dependencias
+        run: pip install requests
 
       - name: Ejecutar script de extracción
         run: python script_transporte.py
@@ -30,5 +32,7 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add transporte_la_plata.geojson
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update: GeoJSON transporte" && git push)
+          if [ -f transporte_la_plata.geojson ]; then
+            git add transporte_la_plata.geojson
+            git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update: GeoJSON transporte" && git push)
+          fi
