@@ -32,14 +32,3 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add transporte_la_plata.geojson
           git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update: GeoJSON transporte" && git push)
-
-          - name: Hacer Commit y Push del archivo GeoJSON actualizado
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          if [ -f transporte_la_plata.geojson ]; then
-            git add transporte_la_plata.geojson
-            git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update: GeoJSON transporte" && git push)
-          else
-            echo "El archivo transporte_la_plata.geojson no fue generado."
-      
