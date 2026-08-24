@@ -1,30 +1,45 @@
 import json
-import urllib.request
-import urllib.error
-import ssl
 import sys
+import requests
+from urllib3.exceptions import InsecureRequestWarning
+
+# Desactivar advertencias de SSL inseguro
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
 BASE_URL = "https://www.laplata.gob.ar:8080/web-central/api/public/transporte"
 
-# Desactivar verificación SSL por certificados incompletos en el servidor de destino
-ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
-
 HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
-    'Referer': 'https://www.laplata.gob.ar/',
-    'Connection': 'keep-alive'
+    'Accept-Language': 'es-AR,es;q=0.9,en;q=0.8',
+    'Origin': 'https://www.laplata.gob.ar',
+    'Referer': 'https://www.laplata.gob.ar/'
 }
 
-def get_json(url):
-    """Petición HTTP GET con cabeceras completas de navegador."""
-    req = urllib.request.Request(url, headers=HEADERS)
-    with urllib.request.urlopen(req, context=ssl_context, timeout=30) as response:
-        content = response.read().decode('utf-8')
-        return json.loads(content)
+# Lista de proxies públicos/reversos de respaldo si falla la conexión directa
+PROXIES_LIST = [
+    None,  # Intento directo primero
+    {"http": "http://181.118.170.18:8080", "https": "http://181.118.170.18:8080"}, # Proxy Argentina
+    {"http": "http://190.210.217.186:999", "https": "http://190.210.217.186:999"}
+]
+
+def get_json_con_reintentos(url):
+    """Realiza peticiones probando conexión directa y saltando a proxies si hay timeout."""
+    for proxy in PROXIES_LIST:
+        try:
+            response = requests.get(
+                url, 
+                headers=HEADERS, 
+                verify=False, 
+                timeout=12, 
+                proxies=proxy
+            )
+            if response.status_code == 200:
+                return response.json()
+        except requests.exceptions.RequestException:
+            continue
+            
+    raise TimeoutError("No se pudo conectar a la API de La Plata incluso tras usar proxies.")
 
 def extraer_transporte_geojson():
     geojson_out = {
@@ -36,16 +51,9 @@ def extraer_transporte_geojson():
     print(f"Obteniendo lista de líneas desde {url_lineas}...")
     
     try:
-        lineas = get_json(url_lineas)
-    except urllib.error.HTTPError as e:
-        print(f"ERROR HTTP al obtener líneas: Código {e.code} - {e.reason}")
-        # Hacemos que el paso de GitHub Actions falle de forma explícita para revisar los logs
-        sys.exit(1)
-    except urllib.error.URLError as e:
-        print(f"ERROR DE CONEXIÓN al obtener líneas: {e.reason}")
-        sys.exit(1)
+        lineas = get_json_con_reintentos(url_lineas)
     except Exception as e:
-        print(f"ERROR INESPERADO: {type(e).__name__} - {e}")
+        print(f"ERROR CRÍTICO: {e}")
         sys.exit(1)
 
     print(f"Se encontraron {len(lineas)} líneas.")
@@ -57,9 +65,9 @@ def extraer_transporte_geojson():
         
         url_ramales = f"{BASE_URL}/obtenerRamalesPorLinea?idLinea={linea_id}"
         try:
-            ramales = get_json(url_ramales)
+            ramales = get_json_con_reintentos(url_ramales)
         except Exception as e:
-            print(f"Error en ramales de línea {linea_nombre} (ID: {linea_id}): {e}")
+            print(f"Error en ramales de línea {linea_nombre}: {e}")
             continue
 
         for ramal in ramales:
@@ -68,9 +76,9 @@ def extraer_transporte_geojson():
             
             url_detalle = f"{BASE_URL}/obtenerRamal?idRamal={ramal_id}"
             try:
-                detalle = get_json(url_detalle)
+                detalle = get_json_con_reintentos(url_detalle)
             except Exception as e:
-                print(f"Error en detalle de ramal {ramal_nombre} (ID: {ramal_id}): {e}")
+                print(f"Error en detalle de ramal {ramal_nombre}: {e}")
                 continue
 
             descripcion = detalle.get("descripcion", "")
@@ -110,13 +118,13 @@ def extraer_transporte_geojson():
                             "properties": props
                         })
                 except json.JSONDecodeError:
-                    print(f"No se pudo parsear `tramoJson` para ramal ID {ramal_id}")
+                    pass
 
     output_filename = "transporte_la_plata.geojson"
     with open(output_filename, "w", encoding="utf-8") as f:
         json.dump(geojson_out, f, ensure_ascii=False, indent=2)
     
-    print(f"\n¡Éxito! Archivo '{output_filename}' generado con {len(geojson_out['features'])} elementos.")
+    print(f"\n¡Éxito! GeoJSON generado con {len(geojson_out['features'])} entidades.")
 
 if __name__ == "__main__":
     extraer_transporte_geojson()
