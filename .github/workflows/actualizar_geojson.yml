@@ -16,12 +16,17 @@ jobs:
       - name: Clonar el repositorio
         uses: actions/checkout@v4
 
+      # PASO CLAVE: Conectar el runner a Cloudflare WARP para saltar el geobloqueo de IP
+      - name: Configurar Cloudflare WARP
+        uses: fscarmen/warp-on-actions@v1
+        with:
+          mode: warp
+
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # PASO NUEVO: Instalar requests
       - name: Instalar dependencias
         run: pip install requests
 
