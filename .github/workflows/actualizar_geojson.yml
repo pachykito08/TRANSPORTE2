@@ -16,9 +16,8 @@ jobs:
       - name: Clonar el repositorio
         uses: actions/checkout@v4
 
-      # PASO CLAVE: Conectar el runner a Cloudflare WARP para saltar el geobloqueo de IP
       - name: Configurar Cloudflare WARP
-        uses: fscarmen/warp-on-actions@v1
+        uses: fscarmen/warp-on-actions@main
         with:
           mode: warp
 
