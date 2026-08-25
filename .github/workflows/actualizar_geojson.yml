@@ -19,7 +19,7 @@ jobs:
       - name: Configurar Cloudflare WARP
         uses: fscarmen/warp-on-actions@main
         with:
-          mode: warp
+          mode: client
 
       - name: Configurar Python
         uses: actions/setup-python@v5
